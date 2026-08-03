@@ -1,0 +1,18 @@
+{
+  "name": "playit-server",
+  "version": "1.0.0",
+  "description": "Express Backend Server for PlayIT YouTube app",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "play-dl": "^1.9.7",
+    "youtube-dl-exec": "^3.1.9"
+  }
+}
