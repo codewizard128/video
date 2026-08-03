@@ -3,15 +3,17 @@ const cors = require('cors');
 const youtubedl = require('youtube-dl-exec');
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
 
 function getReqBaseUrl(req) {
-  const host = req ? req.get('host') : `localhost:${PORT}`;
-  const protocol = req ? req.protocol : 'http';
-  return `${protocol}://${host || `localhost:${PORT}`}/api`;
+  if (!req) return `http://localhost:${PORT}/api`;
+  const host = req.get('host');
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  return `${protocol}://${host}/api`;
 }
 
 // Request logging middleware
@@ -53,8 +55,8 @@ async function resolvePlayableStream(videoId) {
   return 'https://www.w3schools.com/html/mov_bbb.mp4';
 }
 
-// 1. Health Check
-app.get('/api/health', (req, res) => {
+// 1. Health Check & Root Endpoints
+app.get(['/', '/health', '/api/health'], (req, res) => {
   res.json({
     status: 'ok',
     server: 'PlayIT Express YouTube Engine (yt-dlp)',
