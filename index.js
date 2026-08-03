@@ -23,18 +23,21 @@ app.use((req, res, next) => {
   next();
 });
 
+const YTDLP_OPTIONS = {
+  dumpSingleJson: true,
+  noWarnings: true,
+  noCheckCertificate: true,
+  extractorArgs: 'youtube:player_client=android,mweb',
+  userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+};
+
 /**
  * Resolve direct 200-OK downloadable video URL for YouTube videoId using yt-dlp binary
  */
 async function resolvePlayableStream(videoId) {
   try {
     console.log(`[yt-dlp Engine] Resolving video stream for ID: ${videoId}`);
-    const output = await youtubedl(`https://www.youtube.com/watch?v=${videoId}`, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      noCallHome: true,
-      noCheckCertificate: true,
-    });
+    const output = await youtubedl(`https://www.youtube.com/watch?v=${videoId}`, YTDLP_OPTIONS);
 
     if (output && output.formats) {
       // Find combined MP4 format (audio + video) or best MP4
@@ -70,12 +73,7 @@ app.get('/api/video/:id', async (req, res) => {
   const baseUrl = getReqBaseUrl(req);
 
   try {
-    const output = await youtubedl(`https://www.youtube.com/watch?v=${id}`, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      noCallHome: true,
-      noCheckCertificate: true,
-    });
+    const output = await youtubedl(`https://www.youtube.com/watch?v=${id}`, YTDLP_OPTIONS);
 
     if (output) {
       const durSec = output.duration || 240;
