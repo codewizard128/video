@@ -23,36 +23,57 @@ app.use((req, res, next) => {
   next();
 });
 
-const YTDLP_OPTIONS = {
+// yt-dlp player clients to try in order (ios,android confirmed working without bot challenge)
+const PLAYER_CLIENTS = [
+  'ios,android',
+  'ios',
+  'android',
+  'tv_embedded',
+  'android_embedded',
+  'mweb',
+];
+
+const BASE_YTDLP_OPTIONS = {
   dumpSingleJson: true,
   noWarnings: true,
   noCheckCertificate: true,
-  extractorArgs: 'youtube:player_client=android,mweb',
-  userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
 };
+
+async function ytdlpWithFallback(url) {
+  for (const client of PLAYER_CLIENTS) {
+    try {
+      console.log(`[yt-dlp] Trying player_client=${client} for: ${url}`);
+      const result = await youtubedl(url, {
+        ...BASE_YTDLP_OPTIONS,
+        extractorArgs: `youtube:player_client=${client}`,
+      });
+      if (result && (result.title || result.formats)) {
+        console.log(`[yt-dlp] Success with player_client=${client}`);
+        return result;
+      }
+    } catch (e) {
+      console.warn(`[yt-dlp] Failed with player_client=${client}:`, e.message?.split('\n')[0]);
+    }
+  }
+  return null;
+}
 
 /**
  * Resolve direct 200-OK downloadable video URL for YouTube videoId using yt-dlp binary
  */
 async function resolvePlayableStream(videoId) {
-  try {
-    console.log(`[yt-dlp Engine] Resolving video stream for ID: ${videoId}`);
-    const output = await youtubedl(`https://www.youtube.com/watch?v=${videoId}`, YTDLP_OPTIONS);
+  const output = await ytdlpWithFallback(`https://www.youtube.com/watch?v=${videoId}`);
 
-    if (output && output.formats) {
-      // Find combined MP4 format (audio + video) or best MP4
-      const bestMp4 =
-        output.formats.find((f) => f.url && f.ext === 'mp4' && f.vcodec !== 'none' && f.acodec !== 'none') ||
-        output.formats.find((f) => f.url && f.ext === 'mp4') ||
-        output.formats.find((f) => f.url);
+  if (output && output.formats) {
+    const bestMp4 =
+      output.formats.find((f) => f.url && f.ext === 'mp4' && f.vcodec !== 'none' && f.acodec !== 'none') ||
+      output.formats.find((f) => f.url && f.ext === 'mp4') ||
+      output.formats.find((f) => f.url);
 
-      if (bestMp4 && bestMp4.url) {
-        console.log(`[yt-dlp Engine] Successfully resolved direct stream URL for ID: ${videoId}`);
-        return bestMp4.url;
-      }
+    if (bestMp4 && bestMp4.url) {
+      console.log(`[yt-dlp Engine] Resolved stream URL for ID: ${videoId}`);
+      return bestMp4.url;
     }
-  } catch (e) {
-    console.warn('[yt-dlp Engine Warning]:', e.message);
   }
 
   return 'https://www.w3schools.com/html/mov_bbb.mp4';
@@ -73,7 +94,7 @@ app.get('/api/video/:id', async (req, res) => {
   const baseUrl = getReqBaseUrl(req);
 
   try {
-    const output = await youtubedl(`https://www.youtube.com/watch?v=${id}`, YTDLP_OPTIONS);
+    const output = await ytdlpWithFallback(`https://www.youtube.com/watch?v=${id}`);
 
     if (output) {
       const durSec = output.duration || 240;
